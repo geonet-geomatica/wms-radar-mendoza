@@ -100,18 +100,26 @@ def get_map():
         # Abrir la imagen
         img = Image.open(BytesIO(img_response.content))
 
-        # Dimensiones del área del radar
-        radar_minx, radar_miny = -71.7249353229, -37.4356023471
-        radar_maxx, radar_maxy = -64.9942298547, -31.2320003192
+        # Dimensiones del área del radar (coordenadas geográficas)
+        radar_minx, radar_miny = -71.7249353229, -37.4356023471  # Esquina inferior izquierda
+        radar_maxx, radar_maxy = -64.9942298547, -31.2320003192  # Esquina superior derecha
 
-        # Calcular la posición relativa del BBOX dentro de la imagen original
+        # Calcular las posiciones del recorte en píxeles
         radar_width, radar_height = img.size
+
+        # Calcular las coordenadas del recorte (en píxeles)
         left = int((minx - radar_minx) / (radar_maxx - radar_minx) * radar_width)
         top = int((maxy - radar_maxy) / (radar_miny - radar_maxy) * radar_height)
         right = int((maxx - radar_minx) / (radar_maxx - radar_minx) * radar_width)
         bottom = int((miny - radar_maxy) / (radar_miny - radar_maxy) * radar_height)
 
-        # Recortar la imagen al área solicitada
+        # Asegurarse de que las coordenadas estén dentro de los límites de la imagen
+        left = max(0, min(left, radar_width))
+        top = max(0, min(top, radar_height))
+        right = max(0, min(right, radar_width))
+        bottom = max(0, min(bottom, radar_height))
+
+        # Recortar la imagen usando las coordenadas calculadas
         cropped_img = img.crop((left, top, right, bottom))
 
         # Escalar la imagen al tamaño solicitado
@@ -136,6 +144,7 @@ if __name__ == "__main__":
     # Utilizamos el puerto de la variable de entorno o el 5000 por defecto
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
