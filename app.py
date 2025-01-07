@@ -1,6 +1,6 @@
 from flask import Flask, Response, request
 from io import BytesIO
-from PIL import Image, ImageDraw
+from PIL import Image
 import requests
 import os
 
@@ -87,6 +87,9 @@ def get_map():
         width = int(width)
         height = int(height)
 
+        # Registrar los parámetros recibidos para depuración
+        print(f"BBOX: {bbox}, WIDTH: {width}, HEIGHT: {height}, CRS: {crs}, FORMAT: {format_}")
+
         # URL de la imagen del radar
         img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
 
@@ -125,12 +128,15 @@ def get_map():
 
         return response
     except Exception as e:
+        # Registrar el error para depuración
+        print(f"Error al procesar GetMap: {str(e)}")
         return Response(f"Error al procesar la solicitud de mapa: {str(e)}", status=500)
 
 if __name__ == "__main__":
     # Utilizamos el puerto de la variable de entorno o el 5000 por defecto
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
