@@ -1,4 +1,13 @@
 Flask==2.1.2
 Werkzeug==2.1.2
 OWSLib==0.24.1
+Jinja2>=3.0
+itsdangerous>=2.0
+click>=8.0
+python-dateutil>=1.5
+pytz
+requests>=1.0
+pyproj>=2
+pyyaml
+
 
