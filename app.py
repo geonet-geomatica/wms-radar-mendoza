@@ -56,7 +56,7 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
-                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
+                <BoundingBox CRS="EPSG:4326" minx="-37.4356023471" miny="-71.7249353229" maxx="-31.2320003192" maxy="-64.9942298547" />
                 <Layer queryable="1">
                     <Name>radar</Name>
                     <Title>Radar Mendoza</Title>
@@ -81,64 +81,28 @@ def get_map():
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
 
+    # URL de la imagen del radar
+    img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
+
     try:
-        # Parsear parámetros de BBOX
-        minx, miny, maxx, maxy = map(float, bbox.split(','))
-        width = int(width)
-        height = int(height)
-
-        # Registrar los parámetros recibidos para depuración
-        print(f"BBOX: {bbox}, WIDTH: {width}, HEIGHT: {height}, CRS: {crs}, FORMAT: {format_}")
-
-        # URL de la imagen del radar
-        img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
-
-        # Recuperar la imagen del radar
+        # Recuperar la imagen de radar
         img_response = requests.get(img_url)
-        img_response.raise_for_status()
+        img_response.raise_for_status()  # Verificar si hubo errores en la solicitud
 
-        # Abrir la imagen
         img = Image.open(BytesIO(img_response.content))
-
-        # Dimensiones del área del radar (coordenadas geográficas)
-        radar_minx, radar_miny = -71.7249353229, -37.4356023471  # Esquina inferior izquierda
-        radar_maxx, radar_maxy = -64.9942298547, -31.2320003192  # Esquina superior derecha
-
-        # Calcular las posiciones del recorte en píxeles
-        radar_width, radar_height = img.size
-
-        # Calcular las coordenadas del recorte (en píxeles)
-        left = int((minx - radar_minx) / (radar_maxx - radar_minx) * radar_width)
-        top = int((maxy - radar_maxy) / (radar_miny - radar_maxy) * radar_height)
-        right = int((maxx - radar_minx) / (radar_maxx - radar_minx) * radar_width)
-        bottom = int((miny - radar_maxy) / (radar_miny - radar_maxy) * radar_height)
-
-        # Asegurarse de que las coordenadas estén dentro de los límites de la imagen
-        left = max(0, min(left, radar_width))
-        top = max(0, min(top, radar_height))
-        right = max(0, min(right, radar_width))
-        bottom = max(0, min(bottom, radar_height))
-
-        # Recortar la imagen usando las coordenadas calculadas
-        cropped_img = img.crop((left, top, right, bottom))
-
-        # Escalar la imagen al tamaño solicitado
-        scaled_img = cropped_img.resize((width, height), Image.ANTIALIAS)
 
         # Convertir la imagen a PNG
         img_io = BytesIO()
-        scaled_img.save(img_io, 'PNG')
+        img.save(img_io, 'PNG')
         img_io.seek(0)
 
-        # Crear la respuesta con la imagen escalada
+        # Crear la respuesta con la imagen solicitada
         response = Response(img_io.getvalue(), content_type='image/png')
         response.headers['Content-Disposition'] = 'inline; filename="radar.png"'
 
         return response
     except Exception as e:
-        # Registrar el error para depuración
-        print(f"Error al procesar GetMap: {str(e)}")
-        return Response(f"Error al procesar la solicitud de mapa: {str(e)}", status=500)
+        return Response(f"Error al obtener la imagen: {str(e)}", status=500)
 
 if __name__ == "__main__":
     # Utilizamos el puerto de la variable de entorno o el 5000 por defecto
