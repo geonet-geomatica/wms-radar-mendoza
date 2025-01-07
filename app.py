@@ -6,6 +6,14 @@ import os
 
 app = Flask(__name__)
 
+# Coordenadas de los límites del mapa
+BOUNDING_BOX = {
+    "minx": -71.7249353229,
+    "miny": -37.4356023471,
+    "maxx": -64.9942298547,
+    "maxy": -31.2320003192
+}
+
 @app.route('/')
 def index():
     return "Bienvenido al servicio WMS de Radar Mendoza"
@@ -23,9 +31,9 @@ def wms():
         return Response("Solicitud no válida. Especifique un parámetro REQUEST válido (GetCapabilities o GetMap).", status=400)
 
 def get_capabilities():
-    # Respuesta de GetCapabilities con los nuevos límites y características
-    capabilities = """<?xml version="1.0" encoding="UTF-8"?>
-    <WMS_Capabilities xmlns:xlink="http://www.w3.org/1999/xlink" version="1.3.0">
+    # Respuesta de GetCapabilities
+    capabilities = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+    <WMS_Capabilities xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"1.3.0\">
         <Service>
             <Name>WMS</Name>
             <Title>Radar Mendoza</Title>
@@ -34,7 +42,7 @@ def get_capabilities():
                 <Keyword>Radar</Keyword>
                 <Keyword>Mendoza</Keyword>
             </KeywordList>
-            <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms" />
+            <OnlineResource xlink:type=\"simple\" xlink:href=\"https://wms-radar-mendoza.onrender.com/wms\" />
         </Service>
         <Capability>
             <Request>
@@ -46,7 +54,7 @@ def get_capabilities():
                     <DCPType>
                         <HTTP>
                             <Get>
-                                <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms" />
+                                <OnlineResource xlink:type=\"simple\" xlink:href=\"https://wms-radar-mendoza.onrender.com/wms\" />
                             </Get>
                         </HTTP>
                     </DCPType>
@@ -56,11 +64,10 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
-                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
-                <Layer queryable="1">
+                <BoundingBox CRS=\"EPSG:4326\" minx=\"{BOUNDING_BOX['minx']}\" miny=\"{BOUNDING_BOX['miny']}\" maxx=\"{BOUNDING_BOX['maxx']}\" maxy=\"{BOUNDING_BOX['maxy']}\" />
+                <Layer queryable=\"1\">
                     <Name>radar</Name>
                     <Title>Radar Mendoza</Title>
-                    <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
                 </Layer>
             </Layer>
         </Capability>
@@ -81,6 +88,19 @@ def get_map():
 
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
+
+    # Validar BBOX contra los límites definidos
+    try:
+        bbox_values = list(map(float, bbox.split(',')))
+        if not (
+            BOUNDING_BOX['minx'] <= bbox_values[0] <= BOUNDING_BOX['maxx'] and
+            BOUNDING_BOX['miny'] <= bbox_values[1] <= BOUNDING_BOX['maxy'] and
+            BOUNDING_BOX['minx'] <= bbox_values[2] <= BOUNDING_BOX['maxx'] and
+            BOUNDING_BOX['miny'] <= bbox_values[3] <= BOUNDING_BOX['maxy']
+        ):
+            return Response("BBOX fuera de los límites permitidos.", status=400)
+    except ValueError:
+        return Response("Formato de BBOX no válido.", status=400)
 
     # URL de la imagen del radar
     img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
@@ -109,6 +129,7 @@ if __name__ == "__main__":
     # Utilizamos el puerto de la variable de entorno o el 5000 por defecto
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
