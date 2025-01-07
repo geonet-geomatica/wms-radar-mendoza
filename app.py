@@ -1,5 +1,5 @@
 from flask import Flask, Response
-from OWSLib.WMS import WebMapService
+from owslib.wms import WebMapService
 import requests
 from io import BytesIO
 from PIL import Image
