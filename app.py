@@ -81,36 +81,42 @@ def get_map():
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
 
-    # URL de la imagen del radar
-    img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
-
     try:
-        # Recuperar la imagen de radar
-        img_response = requests.get(img_url)
-        img_response.raise_for_status()  # Verificar si hubo errores en la solicitud
+        # Parsear parámetros de BBOX
+        minx, miny, maxx, maxy = map(float, bbox.split(','))
+        width = int(width)
+        height = int(height)
 
+        # URL de la imagen del radar
+        img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
+
+        # Recuperar la imagen del radar
+        img_response = requests.get(img_url)
+        img_response.raise_for_status()
+
+        # Abrir la imagen
         img = Image.open(BytesIO(img_response.content))
+
+        # Crear una nueva imagen con el tamaño solicitado
+        scaled_img = img.resize((width, height), Image.ANTIALIAS)
 
         # Convertir la imagen a PNG
         img_io = BytesIO()
-        img.save(img_io, 'PNG')
+        scaled_img.save(img_io, 'PNG')
         img_io.seek(0)
 
-        # Crear la respuesta con la imagen solicitada
+        # Crear la respuesta con la imagen escalada
         response = Response(img_io.getvalue(), content_type='image/png')
         response.headers['Content-Disposition'] = 'inline; filename="radar.png"'
 
         return response
     except Exception as e:
-        return Response(f"Error al obtener la imagen: {str(e)}", status=500)
+        return Response(f"Error al procesar la solicitud de mapa: {str(e)}", status=500)
 
 if __name__ == "__main__":
     # Utilizamos el puerto de la variable de entorno o el 5000 por defecto
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
 
 
 
