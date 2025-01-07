@@ -1,6 +1,6 @@
 from flask import Flask, Response, request
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw
 import requests
 import os
 
@@ -56,7 +56,7 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
-                <BoundingBox CRS="EPSG:4326" minx="-37.4356023471" miny="-71.7249353229" maxx="-31.2320003192" maxy="-64.9942298547" />
+                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
                 <Layer queryable="1">
                     <Name>radar</Name>
                     <Title>Radar Mendoza</Title>
@@ -97,8 +97,22 @@ def get_map():
         # Abrir la imagen
         img = Image.open(BytesIO(img_response.content))
 
-        # Crear una nueva imagen con el tamaño solicitado
-        scaled_img = img.resize((width, height), Image.ANTIALIAS)
+        # Dimensiones del área del radar
+        radar_minx, radar_miny = -71.7249353229, -37.4356023471
+        radar_maxx, radar_maxy = -64.9942298547, -31.2320003192
+
+        # Calcular la posición relativa del BBOX dentro de la imagen original
+        radar_width, radar_height = img.size
+        left = int((minx - radar_minx) / (radar_maxx - radar_minx) * radar_width)
+        top = int((maxy - radar_maxy) / (radar_miny - radar_maxy) * radar_height)
+        right = int((maxx - radar_minx) / (radar_maxx - radar_minx) * radar_width)
+        bottom = int((miny - radar_maxy) / (radar_miny - radar_maxy) * radar_height)
+
+        # Recortar la imagen al área solicitada
+        cropped_img = img.crop((left, top, right, bottom))
+
+        # Escalar la imagen al tamaño solicitado
+        scaled_img = cropped_img.resize((width, height), Image.ANTIALIAS)
 
         # Convertir la imagen a PNG
         img_io = BytesIO()
@@ -117,6 +131,7 @@ if __name__ == "__main__":
     # Utilizamos el puerto de la variable de entorno o el 5000 por defecto
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
