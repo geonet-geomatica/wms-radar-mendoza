@@ -10,4 +10,3 @@ requests>=1.0
 pyproj>=2
 pyyaml
 
-
