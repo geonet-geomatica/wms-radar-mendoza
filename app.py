@@ -1,33 +1,41 @@
-from flask import Flask, Response, request, jsonify
+from flask import Flask, Response
+from OWSLib.WMS import WebMapService
 import requests
+from io import BytesIO
+from PIL import Image
+import io
 
 app = Flask(__name__)
 
-# URL base para obtener la imagen del radar
-RADAR_IMAGE_URL = "https://www2.contingencias.mendoza.gov.ar/radar/muestraimagen.php"
-RADAR_IMAGE_PARAMS = {
-    "imagen": "google.png",
-    "sw": "-37.40959444444444,-71.71962222222223",
-    "ne": "-31.22909166666667,-65.02164166666667",
-    "centro": "-34.0,-68.4",
-    "zoom": "7"
-}
+@app.route('/')
+def index():
+    return "Bienvenido al servicio WMS de Radar Mendoza"
 
-@app.route("/wms", methods=["GET"])
+@app.route('/wms')
 def wms():
-    service = request.args.get("SERVICE", "").upper()
-    request_type = request.args.get("REQUEST", "").upper()
+    service = WebMapService('https://www2.contingencias.mendoza.gov.ar/radar/google.png')
+    img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
 
-    if service != "WMS":
-        return Response("Invalid SERVICE parameter", status=400)
+    # Recuperamos la imagen de radar
+    img_response = requests.get(img_url)
+    img = Image.open(BytesIO(img_response.content))
 
-    if request_type == "GETCAPABILITIES":
-        return get_capabilities()
-    elif request_type == "GETMAP":
-        return get_map()
-    else:
-        return Response("Invalid REQUEST parameter", status=400)
+    # Establecer el tipo de contenido de la imagen
+    img_io = BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    # Definir los límites en coordenadas geográficas (EPSG:4326)
+    sw = [-37.40959444444444, -71.71962222222223]
+    ne = [-31.22909166666667, -65.02164166666667]
 
+    # Crear la respuesta WMS para la imagen
+    response = Response(img_io.getvalue(), content_type='image/png')
+    response.headers['Content-Disposition'] = 'inline; filename="radar.png"'
+
+    return response
+
+@app.route('/wms/capabilities')
 def get_capabilities():
     capabilities = """<?xml version="1.0" encoding="UTF-8"?>
     <WMS_Capabilities xmlns:xlink="http://www.w3.org/1999/xlink" version="1.3.0">
@@ -60,7 +68,7 @@ def get_capabilities():
             <Layer>
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
-                <CRS>EPSG:4326</CRS>
+                <CRS>EPSG:4326</CRS> <!-- Definir la proyección correcta -->
                 <BoundingBox CRS="EPSG:4326" minx="-71.71962222222223" miny="-37.40959444444444" maxx="-65.02164166666667" maxy="-31.22909166666667" />
                 <Layer queryable="1">
                     <Name>radar</Name>
@@ -71,18 +79,5 @@ def get_capabilities():
     </WMS_Capabilities>"""
     return Response(capabilities, mimetype="application/xml")
 
-def get_map():
-    # Descargar la imagen del radar desde la URL remota
-    response = requests.get(RADAR_IMAGE_URL, params=RADAR_IMAGE_PARAMS, stream=True)
-
-    if response.status_code == 200:
-        return Response(response.content, mimetype="image/png")
-    else:
-        return Response("Error fetching radar image", status=500)
-
-@app.route("/")
-def home():
-    return jsonify({"message": "Servicio WMS para el radar de Mendoza está funcionando."})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    app.run(debug=True)
