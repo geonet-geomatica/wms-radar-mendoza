@@ -26,8 +26,8 @@ def wms():
     img_io.seek(0)
     
     # Definir los límites en coordenadas geográficas (EPSG:4326)
-    sw = [-37.40959444444444, -71.71962222222223]
-    ne = [-31.22909166666667, -65.02164166666667]
+    sw = [-37.4356023471, -71.7249353229]  # Lower Left: LAT, LON
+    ne = [-31.2320003192, -64.9942298547]  # Upper Right: LAT, LON
 
     # Crear la respuesta WMS para la imagen
     response = Response(img_io.getvalue(), content_type='image/png')
@@ -69,7 +69,7 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS> <!-- Definir la proyección correcta -->
-                <BoundingBox CRS="EPSG:4326" minx="-71.71962222222223" miny="-37.40959444444444" maxx="-65.02164166666667" maxy="-31.22909166666667" />
+                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
                 <Layer queryable="1">
                     <Name>radar</Name>
                     <Title>Radar Mendoza</Title>
@@ -81,3 +81,4 @@ def get_capabilities():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
