@@ -23,7 +23,7 @@ def wms():
         return Response("Solicitud no válida. Especifique un parámetro REQUEST válido (GetCapabilities o GetMap).", status=400)
 
 def get_capabilities():
-    # Respuesta de GetCapabilities
+    # Respuesta de GetCapabilities con los nuevos límites y características
     capabilities = """<?xml version="1.0" encoding="UTF-8"?>
     <WMS_Capabilities xmlns:xlink="http://www.w3.org/1999/xlink" version="1.3.0">
         <Service>
@@ -60,6 +60,7 @@ def get_capabilities():
                 <Layer queryable="1">
                     <Name>radar</Name>
                     <Title>Radar Mendoza</Title>
+                    <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
                 </Layer>
             </Layer>
         </Capability>
@@ -108,6 +109,7 @@ if __name__ == "__main__":
     # Utilizamos el puerto de la variable de entorno o el 5000 por defecto
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
