@@ -54,7 +54,7 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
-                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
+                <BoundingBox CRS="EPSG:4326" minx="-37.4356023471" miny="-71.7249353229" maxx="-31.2320003192" maxy="-64.9942298547" />
                 <Layer queryable="1">
                     <Name>radar</Name>
                     <Title>Radar Mendoza</Title>
