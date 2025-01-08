@@ -54,7 +54,7 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
-                <BoundingBox CRS="EPSG:4326" minx="-37.4356023471" miny="-71.7249353229" maxx="-31.2320003192" maxy="-64.9942298547" />
+                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
                 <Layer queryable="1">
                     <Name>radar</Name>
                     <Title>Radar Mendoza</Title>
@@ -65,17 +65,35 @@ def get_capabilities():
     return Response(capabilities, mimetype="application/xml")
 
 def get_map():
+    # Obtener parámetros de la solicitud
     bbox = request.args.get('BBOX')
-    width = int(request.args.get('WIDTH', 256))
-    height = int(request.args.get('HEIGHT', 256))
-    crs = request.args.get('CRS', 'EPSG:4326')
-    format_ = request.args.get('FORMAT', 'image/png')
+    width = request.args.get('WIDTH')
+    height = request.args.get('HEIGHT')
+    crs = request.args.get('CRS')
+    format_ = request.args.get('FORMAT')
+    layers = request.args.get('LAYERS')
 
-    if not all([bbox, width, height, crs, format_]):
-        return Response("Faltan parámetros obligatorios para GetMap (BBOX, WIDTH, HEIGHT, CRS, FORMAT).", status=400)
+    # Validar parámetros obligatorios
+    if not all([bbox, width, height, crs, format_, layers]):
+        return Response("Faltan parámetros obligatorios para GetMap (BBOX, WIDTH, HEIGHT, CRS, FORMAT, LAYERS).", status=400)
 
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
+
+    # Procesar BBOX
+    try:
+        bbox = list(map(float, bbox.split(',')))
+        if len(bbox) != 4:
+            raise ValueError("BBOX debe tener 4 valores: miny, minx, maxy, maxx (EPSG:4326).")
+    except Exception:
+        return Response("BBOX inválido. Debe ser un string con 4 valores separados por comas.", status=400)
+
+    # Procesar tamaño de imagen
+    try:
+        width = int(width)
+        height = int(height)
+    except ValueError:
+        return Response("WIDTH y HEIGHT deben ser números enteros.", status=400)
 
     # URL de la imagen del radar
     img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
@@ -87,13 +105,26 @@ def get_map():
 
         img = Image.open(BytesIO(img_response.content))
 
-        # Redimensionar la imagen
-        img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
+        # Transformar la imagen base al BBOX solicitado
+        img_width, img_height = img.size
+        original_bbox = [-71.7249353229, -37.4356023471, -64.9942298547, -31.2320003192]  # BBOX original de la imagen base
+        scale_x = img_width / (original_bbox[2] - original_bbox[0])
+        scale_y = img_height / (original_bbox[3] - original_bbox[1])
 
-        # Convertir a fondo transparente si es necesario
-        if img.mode != 'RGBA':
-            img = img.convert('RGBA')
+        # Calcular los píxeles de recorte en base al BBOX solicitado
+        minx, miny, maxx, maxy = bbox
+        left = int((minx - original_bbox[0]) * scale_x)
+        upper = int((miny - original_bbox[1]) * scale_y)
+        right = int((maxx - original_bbox[0]) * scale_x)
+        lower = int((maxy - original_bbox[1]) * scale_y)
 
+        # Recortar la imagen
+        img_cropped = img.crop((left, upper, right, lower))
+
+        # Redimensionar a las dimensiones solicitadas
+        img_resized = img_cropped.resize((width, height), Image.Resampling.LANCZOS)
+
+        # Convertir a PNG
         img_io = BytesIO()
         img_resized.save(img_io, 'PNG')
         img_io.seek(0)
@@ -106,6 +137,7 @@ def get_map():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
