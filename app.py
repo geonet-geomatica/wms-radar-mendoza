@@ -32,7 +32,7 @@ def get_capabilities():
                 <Keyword>Radar</Keyword>
                 <Keyword>Mendoza</Keyword>
             </KeywordList>
-            <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms" />
+            <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms?SERVICE=WMS&amp;REQUEST=GetCapabilities" />
         </Service>
         <Capability>
             <Request>
@@ -41,7 +41,7 @@ def get_capabilities():
                     <DCPType>
                         <HTTP>
                             <Get>
-                                <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms?SERVICE=WMS&REQUEST=GetCapabilities" />
+                                <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms?SERVICE=WMS&amp;REQUEST=GetCapabilities" />
                             </Get>
                         </HTTP>
                     </DCPType>
@@ -51,7 +51,7 @@ def get_capabilities():
                     <DCPType>
                         <HTTP>
                             <Get>
-                                <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms?SERVICE=WMS&REQUEST=GetMap" />
+                                <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms?SERVICE=WMS&amp;REQUEST=GetMap" />
                             </Get>
                         </HTTP>
                     </DCPType>
@@ -81,26 +81,23 @@ def get_map():
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
 
-    # Procesar el BBOX
-    try:
-        minx, miny, maxx, maxy = map(float, bbox.split(','))
-    except ValueError:
-        return Response("El parámetro BBOX es inválido. Debe tener el formato minx,miny,maxx,maxy.", status=400)
-
     # URL de la imagen del radar
     img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
 
     try:
-        # Descargar la imagen original
+        # Recuperar la imagen original
         img_response = requests.get(img_url, timeout=10)
         img_response.raise_for_status()
 
         img = Image.open(BytesIO(img_response.content))
 
-        # Redimensionar la imagen al tamaño solicitado
+        # Redimensionar la imagen
         img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
 
-        # Crear la imagen solicitada en PNG
+        # Convertir a fondo transparente si es necesario
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+
         img_io = BytesIO()
         img_resized.save(img_io, 'PNG')
         img_io.seek(0)
@@ -113,6 +110,7 @@ def get_map():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
