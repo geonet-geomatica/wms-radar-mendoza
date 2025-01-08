@@ -3,9 +3,16 @@ from io import BytesIO
 from PIL import Image
 import requests
 import os
-import pyproj
+from pyproj import Transformer
 
 app = Flask(__name__)
+
+# Coordenadas de la imagen base (EPSG:3857)
+ORIGIN_X = -68.25000000000001
+ORIGIN_Y = -34.24966653449996
+PIXELS_PER_UNIT = 152.87405654296876  # Corresponde al nivel 10
+IMAGE_WIDTH = 256
+IMAGE_HEIGHT = 256
 
 @app.route('/')
 def index():
@@ -14,7 +21,6 @@ def index():
 @app.route('/wms')
 def wms():
     request_type = request.args.get('REQUEST', '').upper()
-
     if request_type == 'GETCAPABILITIES':
         return get_capabilities()
     elif request_type == 'GETMAP':
@@ -55,17 +61,14 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:3857</CRS>
-                <BoundingBox CRS="EPSG:3857" minx="-7598394" miny="-4020959" maxx="-7542000" maxy="-3955000" />
-                <Layer queryable="1">
-                    <Name>radar</Name>
-                    <Title>Radar Mendoza</Title>
-                </Layer>
+                <BoundingBox CRS="EPSG:3857" minx="-68.25000000000001" miny="-34.24966653449996" maxx="-67.75032747733738" maxy="-33.74999999999999" />
             </Layer>
         </Capability>
     </WMS_Capabilities>"""
     return Response(capabilities, mimetype="application/xml")
 
 def get_map():
+    # Parámetros requeridos
     bbox = request.args.get('BBOX')
     width = int(request.args.get('WIDTH', 256))
     height = int(request.args.get('HEIGHT', 256))
@@ -78,56 +81,44 @@ def get_map():
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
 
-    # Parsear el BBOX y transformarlo de EPSG:3857 a EPSG:4326
+    # Parsear BBOX
     try:
-        bbox_vals = list(map(float, bbox.split(',')))
-        transformer = pyproj.Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
-        minx, miny = transformer.transform(bbox_vals[0], bbox_vals[1])
-        maxx, maxy = transformer.transform(bbox_vals[2], bbox_vals[3])
-    except Exception as e:
-        return Response(f"Error al transformar coordenadas del BBOX: {str(e)}", status=400)
+        minx, miny, maxx, maxy = map(float, bbox.split(','))
+    except ValueError:
+        return Response("BBOX inválido. Debe estar en el formato minx,miny,maxx,maxy.", status=400)
 
-    # URL de la imagen original del radar
+    # Cargar imagen base
     img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
-
     try:
-        # Recuperar la imagen original
         img_response = requests.get(img_url, timeout=10)
         img_response.raise_for_status()
         img = Image.open(BytesIO(img_response.content))
-
-        # Recortar y redimensionar la imagen para que coincida con el BBOX solicitado
-        img_width, img_height = img.size
-
-        origin_x, origin_y = -68.25, -34.24966653449996  # Coordenadas de origen de la imagen
-        img_bbox = (-68.25, -34.24966653449996, -67.75032747733738, -33.74999999999999)
-        
-        scale_x = img_width / (img_bbox[2] - img_bbox[0])
-        scale_y = img_height / (img_bbox[3] - img_bbox[1])
-
-        crop_box = (
-            int((minx - img_bbox[0]) * scale_x),
-            int((img_bbox[3] - maxy) * scale_y),
-            int((maxx - img_bbox[0]) * scale_x),
-            int((img_bbox[3] - miny) * scale_y),
-        )
-
-        cropped_img = img.crop(crop_box)
-        resized_img = cropped_img.resize((width, height), Image.Resampling.LANCZOS)
-
-        # Guardar la imagen como PNG
-        img_io = BytesIO()
-        resized_img.save(img_io, 'PNG')
-        img_io.seek(0)
-
-        return Response(img_io.getvalue(), content_type='image/png')
-
     except Exception as e:
-        return Response(f"Error al procesar la solicitud GetMap: {str(e)}", status=500)
+        return Response(f"Error al cargar la imagen base: {str(e)}", status=500)
+
+    # Calcular área de recorte en píxeles
+    scale_x = PIXELS_PER_UNIT * (maxx - minx) / (ORIGIN_X - (ORIGIN_X + IMAGE_WIDTH * PIXELS_PER_UNIT))
+    scale_y = PIXELS_PER_UNIT * (maxy - miny) / (ORIGIN_Y - (ORIGIN_Y + IMAGE_HEIGHT * PIXELS_PER_UNIT))
+
+    crop_x1 = int((minx - ORIGIN_X) / scale_x)
+    crop_y1 = int((ORIGIN_Y - maxy) / scale_y)
+    crop_x2 = int((maxx - ORIGIN_X) / scale_x)
+    crop_y2 = int((ORIGIN_Y - miny) / scale_y)
+
+    # Recortar y escalar la imagen
+    img_cropped = img.crop((crop_x1, crop_y1, crop_x2, crop_y2))
+    img_resized = img_cropped.resize((width, height), Image.Resampling.LANCZOS)
+
+    # Generar la respuesta
+    img_io = BytesIO()
+    img_resized.save(img_io, 'PNG')
+    img_io.seek(0)
+    return Response(img_io.getvalue(), content_type='image/png')
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
