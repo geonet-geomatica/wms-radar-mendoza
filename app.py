@@ -62,7 +62,7 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:3857</CRS>
-                <BoundingBox CRS="EPSG:3857" minx="-7597169.395054846" miny="-4041421.312159051" maxx="-7543133.941733132" maxy="-3994556.003956313" />
+                <BoundingBox CRS="EPSG:3857" minx="-7984383.277325993" miny="-4499999.319269053" maxx="-7235124.571920742" maxy="-3662915.595787793" />
             </Layer>
         </Capability>
     </WMS_Capabilities>"""
@@ -110,6 +110,7 @@ def get_map():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
