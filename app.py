@@ -28,9 +28,8 @@ def get_capabilities():
             <Name>WMS</Name>
             <Title>Radar Mendoza</Title>
             <Abstract>Servicio WMS para mostrar radar de Mendoza</Abstract>
-            <CRS>EPSG:4326</CRS>
             <CRS>EPSG:3857</CRS>
-            <BoundingBox CRS="EPSG:3857" minx="-3662915.5957877929322422" miny="-7235124.5719207422807813" maxx="-4499999.3192690527066588" maxy="-7984383.2773259934037924" />
+            <BoundingBox CRS="EPSG:3857" minx="-7984383.2773259934037924" miny="-4499999.3192690527066588" maxx="-7235124.5719207422807813" maxy="-3662915.5957877929322422" />
         </Service>
         <Capability>
             <Request>
@@ -52,7 +51,6 @@ def get_capabilities():
                 <Name>radar</Name>
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
-                <CRS>EPSG:4326</CRS>
                 <CRS>EPSG:3857</CRS>
                 <BoundingBox CRS="EPSG:3857" minx="-7984383.2773259934037924" miny="-4499999.3192690527066588" maxx="-7235124.5719207422807813" maxy="-3662915.5957877929322422" />
             </Layer>
