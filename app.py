@@ -28,11 +28,10 @@ def get_capabilities():
             <Name>WMS</Name>
             <Title>Radar Mendoza</Title>
             <Abstract>Servicio WMS para mostrar radar de Mendoza</Abstract>
-            <KeywordList>
-                <Keyword>Radar</Keyword>
-                <Keyword>Mendoza</Keyword>
-            </KeywordList>
-            <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms?SERVICE=WMS&amp;REQUEST=GetCapabilities" />
+            <CRS>EPSG:4326</CRS>
+            <CRS>EPSG:3857</CRS>
+            <BoundingBox CRS="EPSG:4326" minx="-71.71962222222223" miny="-37.40959444444444" maxx="-65.02164166666667" maxy="-31.22909166666667" />
+            <BoundingBox CRS="EPSG:3857" minx="-7984383.28" miny="-4499999.32" maxx="-7235124.57" maxy="-3662915.60" />
         </Service>
         <Capability>
             <Request>
@@ -55,11 +54,25 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
+                <CRS>EPSG:3857</CRS>
                 <BoundingBox CRS="EPSG:4326" minx="-71.71962222222223" miny="-37.40959444444444" maxx="-65.02164166666667" maxy="-31.22909166666667" />
+                <BoundingBox CRS="EPSG:3857" minx="-7984383.28" miny="-4499999.32" maxx="-7235124.57" maxy="-3662915.60" />
             </Layer>
         </Capability>
     </WMS_Capabilities>"""
     return Response(capabilities, mimetype="application/xml")
+
+def transform_coordinates(bbox, from_crs="EPSG:4326", to_crs="EPSG:3857"):
+    """
+    Transforma las coordenadas del BBOX de un CRS a otro.
+    """
+    from pyproj import Transformer
+
+    transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    minx, miny, maxx, maxy = bbox
+    minx, miny = transformer.transform(minx, miny)
+    maxx, maxy = transformer.transform(maxx, maxy)
+    return [minx, miny, maxx, maxy]
 
 def get_map():
     bbox = request.args.get('BBOX')
@@ -76,7 +89,10 @@ def get_map():
 
     # Parsear coordenadas BBOX
     bbox_coords = list(map(float, bbox.split(',')))
-    minx, miny, maxx, maxy = bbox_coords
+
+    # Transformar coordenadas si el CRS solicitado es EPSG:3857
+    if crs == "EPSG:3857":
+        bbox_coords = transform_coordinates(bbox_coords, from_crs="EPSG:4326", to_crs="EPSG:3857")
 
     # URL de la imagen base
     img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
@@ -88,31 +104,12 @@ def get_map():
 
         img = Image.open(BytesIO(img_response.content))
 
-        # Transformar la imagen para ajustarse al BBOX
-        img_width, img_height = img.size
-        aspect_ratio = img_width / img_height
-
         # Escalar la imagen al tamaño solicitado
-        scaled_width = width
-        scaled_height = int(width / aspect_ratio)
-
-        if scaled_height < height:
-            scaled_height = height
-            scaled_width = int(height * aspect_ratio)
-
-        img_resized = img.resize((scaled_width, scaled_height), Image.Resampling.LANCZOS)
-
-        # Recortar la imagen para que coincida con el BBOX
-        crop_x1 = int((minx + 180) / 360 * scaled_width)
-        crop_x2 = int((maxx + 180) / 360 * scaled_width)
-        crop_y1 = int((90 - maxy) / 180 * scaled_height)
-        crop_y2 = int((90 - miny) / 180 * scaled_height)
-
-        img_cropped = img_resized.crop((crop_x1, crop_y1, crop_x2, crop_y2))
+        img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
 
         # Convertir a formato PNG
         img_io = BytesIO()
-        img_cropped.save(img_io, 'PNG')
+        img_resized.save(img_io, 'PNG')
         img_io.seek(0)
 
         return Response(img_io.getvalue(), content_type='image/png')
@@ -123,6 +120,7 @@ def get_map():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
