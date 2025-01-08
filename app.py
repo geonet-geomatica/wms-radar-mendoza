@@ -30,8 +30,7 @@ def get_capabilities():
             <Abstract>Servicio WMS para mostrar radar de Mendoza</Abstract>
             <CRS>EPSG:4326</CRS>
             <CRS>EPSG:3857</CRS>
-            <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
-            <BoundingBox CRS="EPSG:3857" minx="-7984383.277" miny="-4499999.319" maxx="-7235124.572" maxy="-3662915.596" />
+            <BoundingBox CRS="EPSG:3857" minx="-7984383.2773259934037924" miny="-4499999.3192690527066588" maxx="-7235124.5719207422807813" maxy="-3662915.5957877929322422" />
         </Service>
         <Capability>
             <Request>
@@ -55,8 +54,7 @@ def get_capabilities():
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
                 <CRS>EPSG:3857</CRS>
-                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229" miny="-37.4356023471" maxx="-64.9942298547" maxy="-31.2320003192" />
-                <BoundingBox CRS="EPSG:3857" minx="-7984383.277" miny="-4499999.319" maxx="-7235124.572" maxy="-3662915.596" />
+                <BoundingBox CRS="EPSG:3857" minx="-7984383.2773259934037924" miny="-4499999.3192690527066588" maxx="-7235124.5719207422807813" maxy="-3662915.5957877929322422" />
             </Layer>
         </Capability>
     </WMS_Capabilities>"""
@@ -78,7 +76,7 @@ def get_map():
     bbox = request.args.get('BBOX')
     width = int(request.args.get('WIDTH', 256))
     height = int(request.args.get('HEIGHT', 256))
-    crs = request.args.get('CRS', 'EPSG:4326')
+    crs = request.args.get('CRS', 'EPSG:3857')
     format_ = request.args.get('FORMAT', 'image/png')
 
     if not all([bbox, width, height, crs, format_]):
@@ -91,7 +89,7 @@ def get_map():
     bbox_coords = list(map(float, bbox.split(',')))
 
     # Transformar coordenadas si el CRS solicitado es EPSG:3857
-    if crs == "EPSG:3857":
+    if crs == "EPSG:4326":
         bbox_coords = transform_coordinates(bbox_coords, from_crs="EPSG:4326", to_crs="EPSG:3857")
 
     # URL de la imagen base
