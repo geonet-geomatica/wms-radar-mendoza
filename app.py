@@ -3,23 +3,9 @@ from io import BytesIO
 from PIL import Image
 import requests
 import os
-import math
+import pyproj
 
 app = Flask(__name__)
-
-def lonlat_to_webmercator(lon, lat):
-    """Convert longitude/latitude to Web Mercator (EPSG:3857)."""
-    x = lon * 20037508.34 / 180
-    y = math.log(math.tan((90 + lat) * math.pi / 360)) / (math.pi / 180)
-    y = y * 20037508.34 / 180
-    return x, y
-
-def webmercator_to_lonlat(x, y):
-    """Convert Web Mercator (EPSG:3857) to longitude/latitude."""
-    lon = x / 20037508.34 * 180
-    lat = y / 20037508.34 * 180
-    lat = 180 / math.pi * (2 * math.atan(math.exp(lat * math.pi / 180)) - math.pi / 2)
-    return lon, lat
 
 @app.route('/')
 def index():
@@ -69,14 +55,17 @@ def get_capabilities():
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:3857</CRS>
-                <BoundingBox CRS="EPSG:3857" minx="-7593317.219429" miny="-4066111.967251" maxx="-7545317.219429" maxy="-4018111.967251" />
+                <BoundingBox CRS="EPSG:3857" minx="-7598394" miny="-4020959" maxx="-7542000" maxy="-3955000" />
+                <Layer queryable="1">
+                    <Name>radar</Name>
+                    <Title>Radar Mendoza</Title>
+                </Layer>
             </Layer>
         </Capability>
     </WMS_Capabilities>"""
     return Response(capabilities, mimetype="application/xml")
 
 def get_map():
-    # Obtener parámetros de la solicitud
     bbox = request.args.get('BBOX')
     width = int(request.args.get('WIDTH', 256))
     height = int(request.args.get('HEIGHT', 256))
@@ -89,30 +78,46 @@ def get_map():
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
 
-    # Procesar BBOX
+    # Parsear el BBOX y transformarlo de EPSG:3857 a EPSG:4326
     try:
-        bbox = list(map(float, bbox.split(',')))
-        if len(bbox) != 4:
-            raise ValueError("BBOX debe tener 4 valores: minx, miny, maxx, maxy (EPSG:3857).")
-    except Exception:
-        return Response("BBOX inválido. Debe ser un string con 4 valores separados por comas.", status=400)
+        bbox_vals = list(map(float, bbox.split(',')))
+        transformer = pyproj.Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
+        minx, miny = transformer.transform(bbox_vals[0], bbox_vals[1])
+        maxx, maxy = transformer.transform(bbox_vals[2], bbox_vals[3])
+    except Exception as e:
+        return Response(f"Error al transformar coordenadas del BBOX: {str(e)}", status=400)
 
-    # URL de la imagen del radar
+    # URL de la imagen original del radar
     img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
 
     try:
         # Recuperar la imagen original
         img_response = requests.get(img_url, timeout=10)
         img_response.raise_for_status()
-
         img = Image.open(BytesIO(img_response.content))
 
-        # Redimensionar la imagen a las dimensiones solicitadas
-        img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
+        # Recortar y redimensionar la imagen para que coincida con el BBOX solicitado
+        img_width, img_height = img.size
 
-        # Convertir a PNG
+        origin_x, origin_y = -68.25, -34.24966653449996  # Coordenadas de origen de la imagen
+        img_bbox = (-68.25, -34.24966653449996, -67.75032747733738, -33.74999999999999)
+        
+        scale_x = img_width / (img_bbox[2] - img_bbox[0])
+        scale_y = img_height / (img_bbox[3] - img_bbox[1])
+
+        crop_box = (
+            int((minx - img_bbox[0]) * scale_x),
+            int((img_bbox[3] - maxy) * scale_y),
+            int((maxx - img_bbox[0]) * scale_x),
+            int((img_bbox[3] - miny) * scale_y),
+        )
+
+        cropped_img = img.crop(crop_box)
+        resized_img = cropped_img.resize((width, height), Image.Resampling.LANCZOS)
+
+        # Guardar la imagen como PNG
         img_io = BytesIO()
-        img_resized.save(img_io, 'PNG')
+        resized_img.save(img_io, 'PNG')
         img_io.seek(0)
 
         return Response(img_io.getvalue(), content_type='image/png')
@@ -123,6 +128,7 @@ def get_map():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
