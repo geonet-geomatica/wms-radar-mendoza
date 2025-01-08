@@ -30,8 +30,8 @@ def get_capabilities():
             <Abstract>Servicio WMS para mostrar radar de Mendoza</Abstract>
             <CRS>EPSG:4326</CRS>
             <CRS>EPSG:3857</CRS>
-            <BoundingBox CRS="EPSG:4326" minx="-71.71962222222223" miny="-37.40959444444444" maxx="-65.02164166666667" maxy="-31.22909166666667" />
-            <BoundingBox CRS="EPSG:3857" minx="-7984383.28" miny="-4499999.32" maxx="-7235124.57" maxy="-3662915.60" />
+            <BoundingBox CRS="EPSG:4326" minx="-71.7249353229025530" miny="-37.4356023471214812" maxx="-64.9942298546511239" maxy="-31.2320003191547890" />
+            <BoundingBox CRS="EPSG:3857" minx="-7984383.2773259934037924" miny="-4499999.3192690527066588" maxx="-7235124.5719207422807813" maxy="-3662915.5957877929322422" />
         </Service>
         <Capability>
             <Request>
@@ -55,8 +55,8 @@ def get_capabilities():
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
                 <CRS>EPSG:4326</CRS>
                 <CRS>EPSG:3857</CRS>
-                <BoundingBox CRS="EPSG:4326" minx="-71.71962222222223" miny="-37.40959444444444" maxx="-65.02164166666667" maxy="-31.22909166666667" />
-                <BoundingBox CRS="EPSG:3857" minx="-7984383.28" miny="-4499999.32" maxx="-7235124.57" maxy="-3662915.60" />
+                <BoundingBox CRS="EPSG:4326" minx="-71.7249353229025530" miny="-37.4356023471214812" maxx="-64.9942298546511239" maxy="-31.2320003191547890" />
+                <BoundingBox CRS="EPSG:3857" minx="-7984383.2773259934037924" miny="-4499999.3192690527066588" maxx="-7235124.5719207422807813" maxy="-3662915.5957877929322422" />
             </Layer>
         </Capability>
     </WMS_Capabilities>"""
