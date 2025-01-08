@@ -91,7 +91,7 @@ def get_map():
         bbox_coords = transform_coordinates(bbox_coords, from_crs="EPSG:4326", to_crs="EPSG:3857")
 
     # URL de la imagen base
-    img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
+    img_url = 'https://contingencias.mendoza.gov.ar/radar/google.png'
 
     try:
         # Descargar la imagen base
