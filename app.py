@@ -38,13 +38,6 @@ def get_capabilities():
             <Request>
                 <GetCapabilities>
                     <Format>application/xml</Format>
-                    <DCPType>
-                        <HTTP>
-                            <Get>
-                                <OnlineResource xlink:type="simple" xlink:href="https://wms-radar-mendoza.onrender.com/wms?SERVICE=WMS&amp;REQUEST=GetCapabilities" />
-                            </Get>
-                        </HTTP>
-                    </DCPType>
                 </GetCapabilities>
                 <GetMap>
                     <Format>image/png</Format>
@@ -61,8 +54,8 @@ def get_capabilities():
                 <Name>radar</Name>
                 <Title>Radar Mendoza</Title>
                 <Abstract>Datos de radar de la provincia de Mendoza</Abstract>
-                <CRS>EPSG:3857</CRS>
-                <BoundingBox CRS="EPSG:3857" minx="-7984383.277325993" miny="-4499999.319269053" maxx="-7235124.571920742" maxy="-3662915.595787793" />
+                <CRS>EPSG:4326</CRS>
+                <BoundingBox CRS="EPSG:4326" minx="-71.71962222222223" miny="-37.40959444444444" maxx="-65.02164166666667" maxy="-31.22909166666667" />
             </Layer>
         </Capability>
     </WMS_Capabilities>"""
@@ -72,7 +65,7 @@ def get_map():
     bbox = request.args.get('BBOX')
     width = int(request.args.get('WIDTH', 256))
     height = int(request.args.get('HEIGHT', 256))
-    crs = request.args.get('CRS', 'EPSG:3857')
+    crs = request.args.get('CRS', 'EPSG:4326')
     format_ = request.args.get('FORMAT', 'image/png')
 
     if not all([bbox, width, height, crs, format_]):
@@ -81,25 +74,45 @@ def get_map():
     if format_.lower() != 'image/png':
         return Response("Formato no soportado. Solo se soporta image/png.", status=400)
 
-    # URL de la imagen del radar
+    # Parsear coordenadas BBOX
+    bbox_coords = list(map(float, bbox.split(',')))
+    minx, miny, maxx, maxy = bbox_coords
+
+    # URL de la imagen base
     img_url = 'https://www2.contingencias.mendoza.gov.ar/radar/google.png'
 
     try:
-        # Recuperar la imagen original
+        # Descargar la imagen base
         img_response = requests.get(img_url, timeout=10)
         img_response.raise_for_status()
 
         img = Image.open(BytesIO(img_response.content))
 
-        # Redimensionar la imagen
-        img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
+        # Transformar la imagen para ajustarse al BBOX
+        img_width, img_height = img.size
+        aspect_ratio = img_width / img_height
 
-        # Convertir a fondo transparente si es necesario
-        if img.mode != 'RGBA':
-            img = img.convert('RGBA')
+        # Escalar la imagen al tamaño solicitado
+        scaled_width = width
+        scaled_height = int(width / aspect_ratio)
 
+        if scaled_height < height:
+            scaled_height = height
+            scaled_width = int(height * aspect_ratio)
+
+        img_resized = img.resize((scaled_width, scaled_height), Image.Resampling.LANCZOS)
+
+        # Recortar la imagen para que coincida con el BBOX
+        crop_x1 = int((minx + 180) / 360 * scaled_width)
+        crop_x2 = int((maxx + 180) / 360 * scaled_width)
+        crop_y1 = int((90 - maxy) / 180 * scaled_height)
+        crop_y2 = int((90 - miny) / 180 * scaled_height)
+
+        img_cropped = img_resized.crop((crop_x1, crop_y1, crop_x2, crop_y2))
+
+        # Convertir a formato PNG
         img_io = BytesIO()
-        img_resized.save(img_io, 'PNG')
+        img_cropped.save(img_io, 'PNG')
         img_io.seek(0)
 
         return Response(img_io.getvalue(), content_type='image/png')
@@ -110,6 +123,7 @@ def get_map():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
